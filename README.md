@@ -7,7 +7,8 @@ Configurable line buffer and frame buffer for FPGA video processing.
 ✅ Line buffer mode (low latency streaming)  
 ✅ Frame buffer mode (random access)  
 ✅ Runtime reconfigurable width/height/depth  
-✅ Fully tested with comprehensive testbenches  
+✅ Fully tested with comprehensive testbenches
+❌ Framebuffer mode not implemented with external ram yet
 
 ## Quick Start
 

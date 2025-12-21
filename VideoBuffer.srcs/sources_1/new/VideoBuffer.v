@@ -9,8 +9,7 @@
 // Description: Parameterizable line buffer / frame buffer for video upscaler
 // License: MIT / BSD-3-Clause (choose as needed for open source)
 // 
-// Revision:
-// Revision 0.01 - File Created
+// Revision 1.0 - File Created
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
@@ -25,29 +24,31 @@ module line_buffer #(
     parameter PIXEL_WIDTH      = 24,        // Bits per pixel
     parameter ADDR_WIDTH       = $clog2(MAX_WIDTH * MAX_HEIGHT)
 )(
-    input  wire clk,
-    input  wire rst_n,
+    input wire clk,
+    input wire rst_n,
     
     // Runtime configuration inputs
-    input  wire [15:0]                  cfg_width,       // Actual line width to use
-    input  wire [3:0]                   cfg_num_lines,   // Actual number of lines (1-MAX_HEIGHT)
+    input wire [15:0]                  cfg_width,       // Actual line width to use
+    input wire [3:0]                   cfg_num_lines,   // Actual number of lines (1-MAX_HEIGHT)
     
     // Write interface
-    input  wire                         wr_en,
-    input  wire [PIXEL_WIDTH-1:0]       wr_data,
-    input  wire                         wr_line_start,
+    input wire                         wr_en,
+    input wire [PIXEL_WIDTH-1:0]       wr_data,
+    input wire                         wr_line_start,
     
     // Read interface
-    input  wire                         rd_en,
-    output reg  [PIXEL_WIDTH-1:0]       rd_data,
-    input  wire [ADDR_WIDTH-1:0]        rd_addr,
+    input wire                         rd_en,
+    output reg [PIXEL_WIDTH-1:0]       rd_data,
+    input wire [ADDR_WIDTH-1:0]        rd_addr,
     
     // Status
-    output reg                          ready,
-    output reg  [3:0]                   lines_stored
+    output reg                         ready,
+    output reg  [3:0]                  lines_stored
 );
 
     // Memory storage (sized for maximum)
+    (* ram_style = "block" *)
+    (* rw_addr_collision = "yes" *)
     reg [PIXEL_WIDTH-1:0] mem [0:MAX_WIDTH*MAX_HEIGHT-1];
     
     // Write pointer and line counter
@@ -55,7 +56,8 @@ module line_buffer #(
     reg [3:0] wr_line_count;
     
     // Calculate buffer size at runtime
-    wire [ADDR_WIDTH-1:0] buffer_size = cfg_width * cfg_num_lines;
+    //wire [ADDR_WIDTH-1:0] buffer_size = cfg_width * cfg_num_lines;
+    localparam MAX_ADDR = MAX_WIDTH * MAX_HEIGHT - 1;
     
     // Write logic
     always @(posedge clk or negedge rst_n) begin
@@ -75,10 +77,20 @@ module line_buffer #(
             end
             
             if (wr_en) begin
-                mem[wr_ptr] <= wr_data;
-                // Wrap at runtime-configured buffer size
-                wr_ptr <= (wr_ptr >= buffer_size-1) ? 0 : wr_ptr + 1;
+                if (wr_ptr >= MAX_ADDR) begin
+                    wr_ptr <= 0;
+                end else begin
+                    wr_ptr <= wr_ptr + 1;
+                end
+                
             end
+        end
+    end
+    
+    // Write logic (synchronous)
+    always @(posedge clk) begin
+        if (wr_en) begin
+            mem[wr_ptr] <= wr_data;
         end
     end
     
@@ -123,10 +135,14 @@ module frame_buffer #(
 );
 
     // Dual-port memory (sized for maximum)
+    (* ram_style = "block" *)
+    (* rw_addr_collision = "yes" *)
     reg [PIXEL_WIDTH-1:0] mem [0:MAX_WIDTH*MAX_HEIGHT-1];
     
     // Calculate frame size at runtime
-    wire [ADDR_WIDTH-1:0] frame_size = cfg_width * cfg_height;
+    //wire [ADDR_WIDTH-1:0] frame_size = cfg_width * cfg_height;
+    localparam MAX_ADDR = MAX_WIDTH * MAX_HEIGHT - 1;
+    
     
     // Frame tracking
     always @(posedge clk or negedge rst_n) begin
@@ -139,7 +155,7 @@ module frame_buffer #(
     
     // Port A: Write (with bounds checking)
     always @(posedge clk) begin
-        if (wr_en && wr_addr < frame_size) begin
+        if (wr_en) begin
             mem[wr_addr] <= wr_data;
         end
     end
@@ -157,10 +173,10 @@ endmodule
 // Top-Level Buffer with Runtime and Compile-Time Configuration
 // ----------------------------------------------------------------------------
 module VideoBuffer #(
-    parameter MAX_WIDTH        = 1920,      // Maximum width supported
-    parameter MAX_HEIGHT       = 1080,      // Maximum height supported
+    parameter MAX_WIDTH        = 1024,      // Maximum width supported
+    parameter MAX_HEIGHT       = 960,      // Maximum height supported
     parameter PIXEL_WIDTH      = 24,
-    parameter MAX_NUM_LINES    = 8,         // Maximum line buffer depth
+    parameter MAX_NUM_LINES    = 2,         // Maximum line buffer depth
     
     // Compile-time buffer mode selection
     parameter USE_LINE_BUFFER  = 1,
