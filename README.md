@@ -2,6 +2,8 @@
 
 Configurable line buffer and frame buffer for FPGA video processing.
 
+OBS: This IP core is still work in progress as off 23/12-2025
+
 ## Features
 
 ✅ Line buffer mode (low latency streaming)  
@@ -9,6 +11,7 @@ Configurable line buffer and frame buffer for FPGA video processing.
 ✅ Runtime reconfigurable width/height/depth  
 ✅ Fully tested with comprehensive testbenches
 ❌ Framebuffer mode not implemented with external ram yet
+❌ Tested on hardware
 
 ## Quick Start
 
