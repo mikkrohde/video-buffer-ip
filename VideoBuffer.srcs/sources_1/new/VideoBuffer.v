@@ -14,164 +14,6 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-// ----------------------------------------------------------------------------
-// Line Buffer Module
-// Stores N lines in a circular buffer for streaming video processing
-// ----------------------------------------------------------------------------
-module line_buffer #(
-    parameter MAX_WIDTH        = 1920,      // Maximum line width supported
-    parameter MAX_HEIGHT       = 8,         // Maximum number of lines to buffer
-    parameter PIXEL_WIDTH      = 24,        // Bits per pixel
-    parameter ADDR_WIDTH       = $clog2(MAX_WIDTH * MAX_HEIGHT)
-)(
-    input wire clk,
-    input wire rst_n,
-    
-    // Runtime configuration inputs
-    input wire [15:0]                  cfg_width,       // Actual line width to use
-    input wire [3:0]                   cfg_num_lines,   // Actual number of lines (1-MAX_HEIGHT)
-    
-    // Write interface
-    input wire                         wr_en,
-    input wire [PIXEL_WIDTH-1:0]       wr_data,
-    input wire                         wr_line_start,
-    
-    // Read interface
-    input wire                         rd_en,
-    output reg [PIXEL_WIDTH-1:0]       rd_data,
-    input wire [ADDR_WIDTH-1:0]        rd_addr,
-    
-    // Status
-    output reg                         ready,
-    output reg  [3:0]                  lines_stored
-);
-
-    // Memory storage (sized for maximum)
-    (* ram_style = "block" *)
-    (* rw_addr_collision = "yes" *)
-    reg [PIXEL_WIDTH-1:0] mem [0:MAX_WIDTH*MAX_HEIGHT-1];
-    
-    // Write pointer and line counter
-    reg [ADDR_WIDTH-1:0] wr_ptr;
-    reg [3:0] wr_line_count;
-    
-    // Calculate buffer size at runtime
-    //wire [ADDR_WIDTH-1:0] buffer_size = cfg_width * cfg_num_lines;
-    localparam MAX_ADDR = MAX_WIDTH * MAX_HEIGHT - 1;
-    
-    // Write logic
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            wr_ptr <= 0;
-            wr_line_count <= 0;
-            lines_stored <= 0;
-            ready <= 0;
-        end else begin
-            if (wr_line_start) begin
-                // New line starting
-                if (wr_line_count < cfg_num_lines) begin
-                    wr_line_count <= wr_line_count + 1;
-                end
-                lines_stored <= (wr_line_count >= cfg_num_lines-1) ? cfg_num_lines : wr_line_count + 1;
-                ready <= (wr_line_count >= cfg_num_lines-1);
-            end
-            
-            if (wr_en) begin
-                if (wr_ptr >= MAX_ADDR) begin
-                    wr_ptr <= 0;
-                end else begin
-                    wr_ptr <= wr_ptr + 1;
-                end
-                
-            end
-        end
-    end
-    
-    // Write logic (synchronous)
-    always @(posedge clk) begin
-        if (wr_en) begin
-            mem[wr_ptr] <= wr_data;
-        end
-    end
-    
-    // Read logic (synchronous)
-    always @(posedge clk) begin
-        if (rd_en) begin
-            rd_data <= mem[rd_addr];
-        end
-    end
-
-endmodule
-
-// ----------------------------------------------------------------------------
-// Frame Buffer Module
-// ----------------------------------------------------------------------------
-module frame_buffer #(
-    parameter MAX_WIDTH        = 1920,
-    parameter MAX_HEIGHT       = 1080,
-    parameter PIXEL_WIDTH      = 24,
-    parameter ADDR_WIDTH       = $clog2(MAX_WIDTH * MAX_HEIGHT)
-)(
-    input  wire                      clk,
-    input  wire                      rst_n,
-    
-    // Runtime configuration inputs
-    input  wire [15:0]               cfg_width,
-    input  wire [15:0]               cfg_height,
-    
-    // Write interface (port A)
-    input  wire                      wr_en,
-    input  wire [ADDR_WIDTH-1:0]     wr_addr,
-    input  wire [PIXEL_WIDTH-1:0]    wr_data,
-    input  wire                      wr_frame_start,
-    
-    // Read interface (port B)
-    input  wire                      rd_en,
-    input  wire [ADDR_WIDTH-1:0]     rd_addr,
-    output reg  [PIXEL_WIDTH-1:0]    rd_data,
-    
-    // Status
-    output reg                       frame_ready
-);
-
-    // Dual-port memory (sized for maximum)
-    (* ram_style = "block" *)
-    (* rw_addr_collision = "yes" *)
-    reg [PIXEL_WIDTH-1:0] mem [0:MAX_WIDTH*MAX_HEIGHT-1];
-    
-    // Calculate frame size at runtime
-    //wire [ADDR_WIDTH-1:0] frame_size = cfg_width * cfg_height;
-    localparam MAX_ADDR = MAX_WIDTH * MAX_HEIGHT - 1;
-    
-    
-    // Frame tracking
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            frame_ready <= 0;
-        end else if (wr_frame_start) begin
-            frame_ready <= 1;
-        end
-    end
-    
-    // Port A: Write (with bounds checking)
-    always @(posedge clk) begin
-        if (wr_en) begin
-            mem[wr_addr] <= wr_data;
-        end
-    end
-    
-    // Port B: Read
-    always @(posedge clk) begin
-        if (rd_en) begin
-            rd_data <= mem[rd_addr];
-        end
-    end
-
-endmodule
-
-// ----------------------------------------------------------------------------
-// Top-Level Buffer with Runtime and Compile-Time Configuration
-// ----------------------------------------------------------------------------
 module VideoBuffer #(
     parameter MAX_WIDTH        = 1024,      // Maximum width supported
     parameter MAX_HEIGHT       = 960,      // Maximum height supported
@@ -218,7 +60,7 @@ module VideoBuffer #(
     // Generate line buffer instance if enabled at compile time
     generate
         if (USE_LINE_BUFFER) begin : g_line_buffer
-            line_buffer #(
+            LineBuffer #(
                 .MAX_WIDTH(MAX_WIDTH),
                 .MAX_HEIGHT(MAX_NUM_LINES),
                 .PIXEL_WIDTH(PIXEL_WIDTH)
@@ -248,7 +90,7 @@ module VideoBuffer #(
     // Generate frame buffer instance if enabled at compile time
     generate
         if (USE_FRAME_BUFFER) begin : g_frame_buffer
-            frame_buffer #(
+            FrameBuffer #(
                 .MAX_WIDTH(MAX_WIDTH),
                 .MAX_HEIGHT(MAX_HEIGHT),
                 .PIXEL_WIDTH(PIXEL_WIDTH)
@@ -281,4 +123,3 @@ module VideoBuffer #(
     assign frame_ready = fb_ready;
 
 endmodule
-
