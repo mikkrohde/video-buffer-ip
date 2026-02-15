@@ -16,7 +16,7 @@
 
 module VideoBuffer #(
     parameter MAX_WIDTH        = 1024,      // Maximum width supported
-    parameter MAX_HEIGHT       = 960,      // Maximum height supported
+    parameter MAX_HEIGHT       = 960,       // Maximum height supported
     parameter PIXEL_WIDTH      = 24,
     parameter MAX_NUM_LINES    = 2,         // Maximum line buffer depth
     
