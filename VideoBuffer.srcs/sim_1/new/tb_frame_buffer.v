@@ -48,7 +48,7 @@ module tb_frame_buffer;
     wire frame_ready;
     
     // Instantiate DUT
-    frame_buffer #(
+    FrameBuffer #(
         .MAX_WIDTH(MAX_WIDTH),
         .MAX_HEIGHT(MAX_HEIGHT),
         .PIXEL_WIDTH(PIXEL_WIDTH)

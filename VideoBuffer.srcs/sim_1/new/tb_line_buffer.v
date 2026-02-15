@@ -45,7 +45,7 @@ module tb_line_buffer;
     wire [3:0] lines_stored;
     
     // Instantiate DUT
-    line_buffer #(
+    LineBuffer #(
         .MAX_WIDTH(MAX_WIDTH),
         .MAX_HEIGHT(MAX_HEIGHT),
         .PIXEL_WIDTH(PIXEL_WIDTH)
